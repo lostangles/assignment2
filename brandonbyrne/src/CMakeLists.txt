@@ -1,1 +1,1 @@
-add_executable(app main.cpp)
+add_executable(dpgen main.cpp FileReader.cpp FileWriter.cpp IntfParser.cpp)
