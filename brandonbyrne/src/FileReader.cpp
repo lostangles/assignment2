@@ -11,6 +11,12 @@ std::string FileReader::GetLine()
    return "";
 }
 
+std::string FileReader::ParseForModule()
+{
+
+   return "";
+}
+
 bool FileReader::Done()
 {
    return done;

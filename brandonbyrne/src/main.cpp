@@ -13,6 +13,7 @@ int main()
    {
       while( !myReader.Done() )
       {
+         myWriter.WriteLine( myParser.CreateModule( "circuit1" , myReader.ParseForModule() ) );
          myWriter.WriteLine( myParser.Convert( myReader.GetLine() ) );
       }
    }

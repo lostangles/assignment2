@@ -1,4 +1,5 @@
 #include <string>
+#include <bits/stdc++.h>
 enum Component_Type_e
 {
    REG,
@@ -20,6 +21,9 @@ class IntfParser
    public:
 	IntfParser();
 	Component_Type_e GetType(std::string line);
+        std::string CreateModule(std::string moduleName, std::string moduleLines);
+        int GetPortSize(std::string line);
+        std::vector<std::string> GetPortNames(std::string line);
         std::string Convert(std::string line);
    private:
 	bool CheckForError();
