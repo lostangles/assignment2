@@ -7,14 +7,20 @@ enum Component_Type_e
    SUB,
    MUL,
    COMP,
-   MUT2x1,
+   MUX2x1,
    SHR,
    SHL,
    DIV,
    MOD,
    INC,
-   DEC
+   DEC,
+   WIRE,
+   INPUT,
+   OUTPUT
 } ;
+
+
+class Component;
 
 class IntfParser
 {
@@ -27,6 +33,7 @@ class IntfParser
         std::string Convert(std::string line);
    private:
 	bool CheckForError();
+        std::vector<Component> components;
 };
 
 class Component
@@ -34,6 +41,13 @@ class Component
    public:
 	virtual std::string ComponentToLine(std::string componentLine) = 0;
 	Component(){};
+
+        Component(int size) { this->size = size; }
+        void ParsePorts(std::string line);
+        int size;
+        std::string output;
+        std::string inputA;
+        std::string inputB;
 
 };
 
@@ -64,7 +78,9 @@ class ComponentWIRE : public Component
 	{
 	   return "";
 	}
-
+        ComponentWIRE(int size) { this->size = size; }
+        void ParsePorts(std::string line);
+        std::vector<std::string> wires;
 };
 
 class ComponentREG : public Component
@@ -118,6 +134,10 @@ class ComponentCOMP : public Component
 
 	   return "";
 	}
+   void ParsePorts(std::string line);
+   std::string equal;
+   std::string lessThan;
+   std::string greaterThan;
 
 };
 
@@ -129,6 +149,8 @@ class ComponentMUX2x1 : public Component
 
 	   return "";
 	}
+   void ParsePorts(std::string line);
+   std::string switchInput;
 
 };
 

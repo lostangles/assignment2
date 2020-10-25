@@ -149,3 +149,200 @@ std::string IntfParser::CreateModule(std::string moduleName, std::string file)
      
    return outputStr;
 }
+
+Component_Type_e IntfParser::GetType(std::string line)
+{
+   Component_Type_e type;
+  
+   if (line.find("wire") != std::string::npos)
+   {
+      if (line.find("Int") != std::string::npos)
+      {
+
+      }
+      else
+      {
+         type = Component_Type_e::WIRE;  
+      }
+   }
+ 
+   if (line.find("register") != std::string::npos)
+   {
+      type = Component_Type_e::REG;  
+   }
+   if (line.find("+") != std::string::npos)
+   {
+      type = Component_Type_e::ADD;  
+   }
+
+   if (line.find("-") != std::string::npos)
+   {
+      type = Component_Type_e::SUB;  
+   }
+
+   if (line.find("*") != std::string::npos)
+   {
+      type = Component_Type_e::MUL;  
+   }
+
+   if (line.find(">") != std::string::npos)
+   {
+      type = Component_Type_e::COMP;  
+   }
+   if (line.find("==") != std::string::npos)
+   {
+      type = Component_Type_e::COMP;  
+   }
+   if (line.find("<") != std::string::npos)
+   {
+      type = Component_Type_e::COMP;  
+   }
+
+   if (line.find("?") != std::string::npos)
+   {
+      type = Component_Type_e::MUX2x1;  
+   }
+
+   if (line.find(">>") != std::string::npos)
+   {
+      type = Component_Type_e::SHR;  
+   }
+
+   if (line.find("<<") != std::string::npos)
+   {
+      type = Component_Type_e::SHL;  
+   }
+
+   if (line.find("%") != std::string::npos)
+   {
+      type = Component_Type_e::MOD;  
+   }
+
+   if (line.find("/") != std::string::npos)
+   {
+      type = Component_Type_e::DIV;  
+   }
+
+   if (line.find("+ 1") != std::string::npos)
+   {
+      type = Component_Type_e::INC;  
+   }
+
+   if (line.find("- 1") != std::string::npos)
+   {
+      type = Component_Type_e::DEC;  
+   }
+   
+   if (line.find("output") != std::string::npos)
+   {
+      type = Component_Type_e::OUTPUT;  
+   }
+
+   if (line.find("input") != std::string::npos)
+   {
+      type = Component_Type_e::INPUT;  
+   }
+
+
+
+   return type;
+}
+
+void Component::ParsePorts(string line)
+{
+
+   string port;
+   bool assignmentFound = false;
+   int firstPortFound = 0;
+   char delim = ' ';
+   bool oneShot = false;
+   string lastToken;
+   stringstream myStream(line);
+   while(getline(myStream, port, delim ))
+   {
+      //Start collecting port names
+      if ( port.find("=") != std::string::npos ) 
+      {
+         output = lastToken;
+         assignmentFound = true;
+
+         continue;
+      }
+      if (assignmentFound && !oneShot)
+      {
+         inputA = port;
+         oneShot = true;
+      }
+
+      lastToken = port;
+   }
+
+   inputB = lastToken;
+
+
+}
+
+void ComponentCOMP::ParsePorts(string line)
+{
+   equal = "";
+   greaterThan = "";
+   lessThan = "";
+   reinterpret_cast<Component*>(this)->ParsePorts(line);   
+   
+   if ( line.find("==") != std::string::npos ) 
+   {
+      equal = output;
+   }
+
+   if ( line.find(">") != std::string::npos ) 
+   {
+      greaterThan = output;
+   }
+
+   
+   if ( line.find("<") != std::string::npos ) 
+   {
+      lessThan = output;
+   }
+}
+
+void ComponentMUX2x1::ParsePorts(string line)
+{
+
+   string port;
+   bool assignmentFound = false;
+   int firstPortFound = 0;
+   char delim = ' ';
+   int twoShot = 0;
+   string lastToken;
+   stringstream myStream(line);
+   while(getline(myStream, port, delim ))
+   {
+      //Start collecting port names
+      if ( port.find("=") != std::string::npos ) 
+      {
+         output = lastToken;
+         assignmentFound = true;
+
+         continue;
+      }
+      if (twoShot == 0)
+      {
+         switchInput = port;
+      }
+      if (assignmentFound && (twoShot++ < 3) )
+      {
+         inputA = port;
+      }
+
+      lastToken = port;
+   }
+
+   inputB = lastToken;
+
+}
+
+void ComponentWIRE::ParsePorts(string line)
+{
+
+}
