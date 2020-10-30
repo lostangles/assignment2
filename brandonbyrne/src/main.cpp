@@ -3,19 +3,27 @@
 #include "FileWriter.h"
 #include "IntfParser.h"
 
-int main()
+int main(int argc, char * argv[])
 {
-   FileReader myReader("test");
-   FileWriter myWriter("test");
+   if (argc != 3)
+   {
+   
+   }
+   std::string input(argv[1]);
+   std::string output(argv[2]);
+   FileReader myReader(input);
+   FileWriter myWriter(output);
    IntfParser myParser; 
    
    try 
    {
       while( !myReader.Done() )
       {
-         myWriter.WriteLine( myParser.CreateModule( "circuit1" , myReader.ParseForModule() ) );
-         myWriter.WriteLine( myParser.Convert( myReader.GetLine() ) );
+         myParser.Convert(myReader.GetLine()); 
       }
+      output.pop_back();
+      output.pop_back();
+      myWriter.WriteLine(myParser.GenerateOutput(output));
    }
    catch (std::string exception) 
    {

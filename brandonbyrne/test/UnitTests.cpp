@@ -1,10 +1,12 @@
 #include "gtest/gtest.h"
 #include "IntfParser.h"
+#include "FileReader.h"
 
 TEST (IntfParser, GetPortSize)
 {
    IntfParser myParser;
    EXPECT_EQ( 31, myParser.GetPortSize("input Int32 a, b, c"));
+   EXPECT_EQ( 63, myParser.GetPortSize("wire Int64 e, f, g, zwire"));
 }
 
 TEST (IntfParser, GetPortNames)
@@ -45,6 +47,9 @@ TEST (IntfParser, GetType)
 TEST (Component, ParsePorts)
 {
    ComponentWIRE myWIRE(63);
+   ComponentREG myREG(63);
+   ComponentINPUT myINPUT(63);
+   ComponentOUTPUT myOUTPUT(63);
    ComponentADD myADD;
    ComponentSUB mySUB;
    ComponentMUL myMUL;
@@ -57,7 +62,24 @@ TEST (Component, ParsePorts)
    ComponentINC myINC;
    ComponentDEC myDEC;
 
+   myINPUT.ParsePorts("input Int64 a, b, c");
+   EXPECT_EQ(myINPUT.ports.at(0), "a");
+   EXPECT_EQ(myINPUT.ports.at(1), "b");
+   EXPECT_EQ(myINPUT.ports.at(2), "c");
+
+   myOUTPUT.ParsePorts("output Int32 z, x");
+   EXPECT_EQ(myOUTPUT.ports.at(0), "z");
+   EXPECT_EQ(myOUTPUT.ports.at(1), "x");
+
    myWIRE.ParsePorts("wire Int64 e, f, g, zwire");
+   EXPECT_EQ(myWIRE.wires.at(0), "e");
+   EXPECT_EQ(myWIRE.wires.at(1), "f");
+   EXPECT_EQ(myWIRE.wires.at(2), "g");
+   EXPECT_EQ(myWIRE.wires.at(3), "zwire");
+   
+   myREG.ParsePorts("register Int64 greg, hreg");
+   EXPECT_EQ(myREG.registers.at(0), "greg");
+   EXPECT_EQ(myREG.registers.at(1), "hreg");
 
    myADD.ParsePorts("d = a + b");
    EXPECT_EQ(myADD.output, "d");
@@ -115,5 +137,114 @@ TEST (Component, ParsePorts)
    EXPECT_EQ(myDEC.output, "e");
    EXPECT_EQ(myDEC.inputA, "a");
    EXPECT_EQ(myDEC.inputB, "1");
+
+}
+
+TEST (IntfParser, AddComponent)
+{
+   IntfParser myParser;
+   myParser.AddPorts("wire Int64 e, f, g, zwire");
+   EXPECT_EQ(myParser.wires.at(0).size, 63);
+   EXPECT_EQ(myParser.wires.at(0).wires.at(0), "e");
+   EXPECT_EQ(myParser.wires.at(0).wires.at(1), "f");
+   EXPECT_EQ(myParser.wires.at(0).wires.at(2), "g");
+   EXPECT_EQ(myParser.wires.at(0).wires.at(3), "zwire");
+   myParser.AddPorts("input Int64 a, b, c");
+   EXPECT_EQ(myParser.inputs.at(0).size, 63);
+   EXPECT_EQ(myParser.inputs.at(0).ports.at(0), "a");
+   EXPECT_EQ(myParser.inputs.at(0).ports.at(1), "b");
+   EXPECT_EQ(myParser.inputs.at(0).ports.at(2), "c");
+   myParser.AddPorts("output Int32 z, x");
+   EXPECT_EQ(myParser.outputs.at(0).size, 31);
+   EXPECT_EQ(myParser.outputs.at(0).ports.at(0), "z");
+   EXPECT_EQ(myParser.outputs.at(0).ports.at(1), "x");
+   myParser.AddPorts("register Int64 greg, hreg");
+   EXPECT_EQ(myParser.registers.at(0).size, 63);
+   EXPECT_EQ(myParser.registers.at(0).registers.at(0), "greg");
+   EXPECT_EQ(myParser.registers.at(0).registers.at(1), "hreg");
+ 
+   //Testing finding output port size
+   myParser.FindPortSize("x");  
+   EXPECT_EQ(31, myParser.FindPortSize("x"));
+   EXPECT_EQ(63, myParser.FindPortSize("greg"));
+   EXPECT_EQ(63, myParser.FindPortSize("zwire"));
+   EXPECT_EQ(63, myParser.FindPortSize("a"));
+
+  //Testing adding adder
+  myParser.AddComponent("z = greg + zwire");
+  EXPECT_EQ(myParser.components.at(0)->output, "z");
+  EXPECT_EQ(myParser.components.at(0)->inputA, "greg");
+  EXPECT_EQ(myParser.components.at(0)->inputB, "zwire");
+  EXPECT_EQ(myParser.components.at(0)->size, 31);
+  EXPECT_EQ(myParser.components.at(0)->inputSizeA, 63);
+  EXPECT_EQ(myParser.components.at(0)->inputSizeB, 63);
+}
+
+TEST (Component, ConvertToLine)
+{
+   IntfParser myParser;
+
+   myParser.AddPorts("wire Int64 e, f, g, zwire, xwire");
+   myParser.AddPorts("input Int64 a, b, c");
+   myParser.AddPorts("output Int32 z, x, xrin");
+   myParser.AddPorts("output Int64 d, x, zrin");
+   myParser.AddPorts("register Int64 greg, hreg");
+   myParser.AddComponent("d = a + b");
+   myParser.AddComponent("xwire = f - d");
+   myParser.AddComponent("f = a * c");
+   myParser.AddComponent("g = d > e");
+   myParser.AddComponent("z = g ? d : e");
+   myParser.AddComponent("zrin = greg >> dEQe");
+   myParser.AddComponent("xrin = hreg << dLTe");
+   myParser.AddComponent("e = a / b");
+   myParser.AddComponent("g = a % b");
+   myParser.AddComponent("f = c + 1");
+   myParser.AddComponent("e = a - 1");
+   EXPECT_EQ(myParser.WriteComponent(0), "ADD#(.DATAWIDTH(64)) ADDER_0({a},{b},{d});");
+   EXPECT_EQ(myParser.WriteComponent(1), "SUB#(.DATAWIDTH(64)) SUB_0({f},{d},{xwire});");
+   EXPECT_EQ(myParser.WriteComponent(2), "MUL#(.DATAWIDTH(64)) MUL_0({a},{c},{f});");
+   EXPECT_EQ(myParser.WriteComponent(3), "COMP#(.DATAWIDTH(64)) COMP_0(.a({d}),.b({e}),.gt(g),.lt(),.eq());");
+   EXPECT_EQ(myParser.WriteComponent(4), "MUX2x1#(.DATAWIDTH(32)) MUX_0(.a({d}),.b({e}),.sel(g),.d({z}));");
+   EXPECT_EQ(myParser.WriteComponent(5), "SHR#(.DATAWIDTH(64)) SHR_0({greg},{63'b0,dEQe},{zrin});");
+   EXPECT_EQ(myParser.WriteComponent(6), "SHL#(.DATAWIDTH(32)) SHL_0({hreg},{31'b0,dLTe},{xrin});");
+   EXPECT_EQ(myParser.WriteComponent(7), "DIV#(.DATAWIDTH(64)) DIV_0({a},{b},{e});");
+   EXPECT_EQ(myParser.WriteComponent(8), "MOD#(.DATAWIDTH(64)) MOD_0({a},{b},{g});");
+   EXPECT_EQ(myParser.WriteComponent(9), "INC#(.DATAWIDTH(64)) INC_0({c},{f});");
+   EXPECT_EQ(myParser.WriteComponent(10), "DEC#(.DATAWIDTH(64)) DEC_0({a},{e});");
+   EXPECT_EQ(myParser.WriteWire(0), "wire [63:0] e,f,g,zwire,xwire;");
+
+}
+
+TEST(FileReader, GetLine)
+{
+   FileReader myReader("474a_circuit1.txt");
+   EXPECT_EQ(myReader.GetLine(), "input Int8 a, b, c");
+   EXPECT_EQ(myReader.GetLine(), "");
+   EXPECT_EQ(myReader.GetLine(), "output Int8 z");
+   EXPECT_EQ(myReader.GetLine(), "output Int16 x");
+   EXPECT_EQ(myReader.GetLine(), "");
+   EXPECT_EQ(myReader.GetLine(), "wire Int8 d, e");
+   EXPECT_EQ(myReader.GetLine(), "wire Int16 f, g");
+   EXPECT_EQ(myReader.GetLine(), "wire Int16 xwire");
+   EXPECT_EQ(myReader.GetLine(), "");
+   EXPECT_EQ(myReader.GetLine(), "d = a + b");
+   EXPECT_EQ(myReader.GetLine(), "e = a + c");
+   EXPECT_EQ(myReader.GetLine(), "g = d > e");
+   EXPECT_EQ(myReader.GetLine(), "z = g ? d : e");
+   EXPECT_EQ(myReader.GetLine(), "f = a * c");
+   EXPECT_EQ(myReader.GetLine(), "xwire = f - d  ");
+   EXPECT_EQ(myReader.GetLine(), "x = xwire");
+}
+
+TEST(IntfParser_FileReader, GetLineConvertToLine)
+{
+   FileReader myReader("474a_circuit1.txt");
+   IntfParser myParser;
+   while (myReader.Done() != true)
+   {
+      myParser.Convert(myReader.GetLine());   
+   }
+   EXPECT_EQ(myReader.Done(), true); 
+   myParser.GenerateOutput("circuit1");   
 
 }
