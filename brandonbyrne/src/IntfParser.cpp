@@ -4,7 +4,7 @@ using namespace std;
 
 IntfParser::IntfParser()
 {
-
+   emptyFile = true;
 }
 
 std::string IntfParser::Convert(std::string line)
@@ -20,10 +20,15 @@ std::string IntfParser::Convert(std::string line)
       )
    {
       AddPorts(line);
+      emptyFile = false;
    }
    else
    {
       AddComponent(line);
+   }
+   if (emptyFile)
+   {
+      throw string("No ports/components found in input netlist");
    }
    stringInputs << line;
    return "";
@@ -31,6 +36,10 @@ std::string IntfParser::Convert(std::string line)
 
 string IntfParser::GenerateOutput(string moduleName)
 {
+   if (emptyFile)
+   {
+      throw string("No ports/components found in input netlist");
+   }
    string line = "";
    line += "module ";
    line += moduleName;
@@ -83,7 +92,7 @@ string IntfParser::GenerateOutput(string moduleName)
 int IntfParser::GetPortSize(std::string line)
 {
    const char * tokenArr = line.c_str();
-   string size;
+   string size = "0";
    bool firstNumberFound = false;
    for (uint32_t i = 0; i < line.size(); i++)
    {
@@ -234,6 +243,14 @@ Component_Type_e IntfParser::GetType(std::string line)
       {
          type = Component_Type_e::WIRE;  
       }
+      //Handle 1 bit wires
+      stringstream myStream(line);
+      string temp;
+      getline(myStream, temp, ' ');
+      if (temp.compare("wire") == 0)
+      {
+         type = Component_Type_e::WIRE;
+      }
    }
 
    if (line.find("=") != std::string::npos)
@@ -318,16 +335,39 @@ Component_Type_e IntfParser::GetType(std::string line)
       type = Component_Type_e::INPUT;  
    }
 
+   if (line.find("$") != std::string::npos)
+   {
+      type = Component_Type_e::NO_TYPE_FOUND;  
+   }
 
 
 
    return type;
 }
 
+int IntfParser::GetSigned(string line)
+{
+   int isSigned = 0;
+   if (line.find("UInt") != std::string::npos)
+   {
+      isSigned = 0;      
+   }
+   else
+   {
+      isSigned = 1;
+   }
+
+   return isSigned;
+}
+
 bool IntfParser::AddPorts(string line)
 {
    bool componentAdded = false;
    Component_Type_e type = GetType(line);
+   if (type == Component_Type_e::NO_TYPE_FOUND)
+   {
+      throw "Invalid type/operator found";
+   }
    int size;
 
    switch(type)
@@ -337,14 +377,22 @@ bool IntfParser::AddPorts(string line)
       size = GetPortSize(line);
       ComponentREG newREG(size);
       newREG.ParsePorts(line);
+      newREG.isSigned = GetSigned(line);
+      newREG.type = REG;
       registers.push_back(newREG);   
       break;
    }
    case WIRE:
    {
       size = GetPortSize(line);
+      if (size == -1)
+      {
+         size = 1;
+      }
       ComponentWIRE newWire(size);
       newWire.ParsePorts(line);
+      newWire.isSigned = GetSigned(line);
+      newWire.type = WIRE;
       wires.push_back(newWire);
       break;
    }
@@ -353,6 +401,8 @@ bool IntfParser::AddPorts(string line)
       size = GetPortSize(line);
       ComponentINPUT newInput(size);
       newInput.ParsePorts(line);
+      newInput.isSigned = GetSigned(line);
+      newInput.type = INPUT;
       inputs.push_back(newInput);
       break;
    }
@@ -361,6 +411,8 @@ bool IntfParser::AddPorts(string line)
       size = GetPortSize(line);
       ComponentOUTPUT newOutput(size);
       newOutput.ParsePorts(line);
+      newOutput.isSigned = GetSigned(line);
+      newOutput.type = OUTPUT;
       outputs.push_back(newOutput); 
       break;
    }
@@ -372,7 +424,8 @@ bool IntfParser::AddPorts(string line)
 
 int IntfParser::FindPortSize(string port)
 {
-   int portSize = 0;
+   int portSize = 1;
+   bool portFound = false;
    //Search through all of our different sized outputs
    for (uint32_t i = 0; i < outputs.size(); i++)
    {
@@ -385,6 +438,7 @@ int IntfParser::FindPortSize(string port)
             {
                //Port name found
                portSize = outputs.at(i).size;
+               portFound = true;
             }
          }
       }
@@ -401,6 +455,7 @@ int IntfParser::FindPortSize(string port)
             {
                //Port name found
                portSize = inputs.at(i).size;
+               portFound = true;
             }
          }
       }
@@ -417,6 +472,7 @@ int IntfParser::FindPortSize(string port)
             {
                //Port name found
                portSize = wires.at(i).size;
+               portFound = true;
             }
          }
       }
@@ -433,9 +489,18 @@ int IntfParser::FindPortSize(string port)
             {
                //Port name found
                portSize = registers.at(i).size;
+               portFound = true;
             }
          }
       }
+   }
+   if ( (!portFound) && (port.compare("1") != 0))
+   {
+      string error = "";
+      error += "Port ";
+      error += port;
+      error += " not found.";
+      throw string(error);
    }
    return portSize;
 }
@@ -445,6 +510,14 @@ bool IntfParser::AddComponent(string line)
    bool componentAdded = false;
    Component_Type_e type = GetType(line);
    int size;
+   if (line.compare("") == 0)
+   {
+      return false;
+   }
+   else if (type == Component_Type_e::NO_TYPE_FOUND)
+   {
+      throw string("Invalid type/operator found");
+   }
 
    switch(type)
    {
@@ -458,6 +531,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = ADD;
       components.push_back(myComponent);
       break;
    }
@@ -471,6 +545,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = SUB;
       components.push_back(myComponent);
       break;
    }
@@ -484,6 +559,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = MUL;
       components.push_back(myComponent);
       break;
    }
@@ -497,6 +573,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = COMP;
       components.push_back(myComponent);
       break;
    }
@@ -510,6 +587,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = MUX2x1;
       components.push_back(myComponent);
       break;
    }
@@ -523,6 +601,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = SHR;
       components.push_back(myComponent);
       break;
    }
@@ -536,6 +615,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = SHL;
       components.push_back(myComponent);
       break;
    }
@@ -549,6 +629,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = DIV;
       components.push_back(myComponent);
       break;
    }
@@ -562,6 +643,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = MOD;
       components.push_back(myComponent);
       break;
    }
@@ -575,6 +657,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = INC;
       components.push_back(myComponent);
       break;
    }
@@ -588,6 +671,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = DEC;
       components.push_back(myComponent);
       break;
    }
@@ -601,6 +685,7 @@ bool IntfParser::AddComponent(string line)
       myComponent->inputSizeA = size;
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
+      myComponent->type = FF;
       components.push_back(myComponent);
       break;
    }
@@ -649,6 +734,10 @@ void Component::ParsePorts(string line)
    while(getline(myStream, port, delim ))
    {
       //Start collecting port names
+      if ( port.find("//") != std::string::npos)
+      {
+         break;
+      }
       if ( port.find("=") != std::string::npos ) 
       {
          output = lastToken;
@@ -680,7 +769,14 @@ string Component::pad_zeros(std::string port)
       if (inputSizeA < size)
       {
          zeros += to_string(size - inputSizeA);
-         zeros += "'b0,";
+         if (isSigned)
+         {
+            zeros += "'b1,";
+         }
+         else
+         {
+            zeros += "'b0,";
+         }
       }
    }
    if (port.compare(inputB) == 0)
@@ -688,7 +784,14 @@ string Component::pad_zeros(std::string port)
       if (inputSizeB < size)
       {
          zeros += to_string(size - inputSizeB);
-         zeros += "'b0,";
+         if (isSigned)
+         {
+            zeros += "'b1,";
+         }
+         else
+         {
+            zeros += "'b0,";
+         }
       }
    }
    return zeros;
@@ -757,21 +860,26 @@ void ComponentWIRE::ParsePorts(string line)
 {
 
    string port;
-   bool portFound = false;
    char delim = ' ';
+   bool oneShot = false;
    stringstream myStream(line);
    while(getline(myStream, port, delim ))
    {
       //Start collecting port names
-      if ( port.find("Int") != std::string::npos ) 
+      if (oneShot == false)
       {
-         portFound = true;
+         oneShot = true;
          continue;
       }
+      if ( port.find("Int") != std::string::npos ) 
+      {
+         continue;
+      }/*
       else if (!portFound)
       {
          continue;
-      } 
+      }*/
+       
       if ( port.find(",") != std::string::npos )
       {
          wires.push_back(port.substr(0, port.size() - 1) );
@@ -818,36 +926,81 @@ void ComponentREG::ParsePorts(string line)
 void ComponentINPUT::ParsePorts(string line)
 {
 
+   string token;
    string port;
    bool portFound = false;
    char delim = ' ';
    stringstream myStream(line);
-   while(getline(myStream, port, delim ))
+   
+   while(getline(myStream, token, delim ))
    {
-      //Start collecting port names
-      if ( port.find("Int") != std::string::npos ) 
+      stringstream noTabs(token);
+      while(getline(noTabs, port, '\t'))
       {
-         portFound = true;
-         continue;
-      }
-      else if (!portFound)
-      {
-         continue;
-      } 
-      if ( port.find(",") != std::string::npos )
-      {
-         ports.push_back(port.substr(0, port.size() - 1) );
-      }
-      else
-      {
-         ports.push_back(port);
+         //Start collecting port names
+         if ( port.find("//") != std::string::npos)
+         {
+            break;
+         }
+         if ( port.find("Int") != std::string::npos ) 
+         {
+            portFound = true;
+            continue;
+         }
+         else if (!portFound)
+         {
+            continue;
+         } 
+         if ( port.find(",") != std::string::npos )
+         {
+            ports.push_back(port.substr(0, port.size() - 1) );
+         }
+         else
+         {
+            ports.push_back(port);
+         }
       }
    }
 }
 
 void ComponentOUTPUT::ParsePorts(string line)
 {
-
+   string token;
+   string port;
+   bool portFound = false;
+   char delim = ' ';
+   stringstream myStream(line);
+   
+   while(getline(myStream, token, delim ))
+   {
+      stringstream noTabs(token);
+      while(getline(noTabs, port, '\t'))
+      {
+         //Start collecting port names
+         if ( port.find("//") != std::string::npos)
+         {
+            break;
+         }
+         if ( port.find("Int") != std::string::npos ) 
+         {
+            portFound = true;
+            continue;
+         }
+         else if (!portFound)
+         {
+            continue;
+         } 
+         if ( port.find(",") != std::string::npos )
+         {
+            ports.push_back(port.substr(0, port.size() - 1) );
+         }
+         else
+         {
+            ports.push_back(port);
+         }
+      }
+   }
+/* 
    string port;
    bool portFound = false;
    char delim = ' ';
@@ -872,5 +1025,26 @@ void ComponentOUTPUT::ParsePorts(string line)
       {
          ports.push_back(port);
       }
+   }*/
+}
+
+BitSize_e Component::sizeToBitSize()
+{
+   int inputSize = inputSizeA > inputSizeB ? inputSizeA : inputSizeB;
+//   inputSize = (inputSize > size) ? inputSize : size;
+   if (inputSize < size)
+   {
+      inputSize = size;
    }
+   switch (inputSize)
+   {
+   case 1: return _1BIT; break;
+   case 2: return _2BIT; break;
+   case 7: return _8BIT; break;
+   case 15: return _16BIT; break;
+   case 31: return _32BIT; break;
+   case 63: return _64BIT; break;
+   default: break;
+   }
+return _1BIT;
 }

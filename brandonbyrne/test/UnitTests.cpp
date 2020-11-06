@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "IntfParser.h"
 #include "FileReader.h"
+#include "Djikstra.h"
 
 TEST (IntfParser, GetPortSize)
 {
@@ -185,8 +186,9 @@ TEST (Component, ConvertToLine)
    IntfParser myParser;
 
    myParser.AddPorts("wire Int64 e, f, g, zwire, xwire");
+   myParser.AddPorts("wire dEQe, dLTe");
    myParser.AddPorts("input Int64 a, b, c");
-   myParser.AddPorts("output Int32 z, x, xrin");
+   myParser.AddPorts("output Int32 z, x, xrin, d");
    myParser.AddPorts("output Int64 d, x, zrin");
    myParser.AddPorts("register Int64 greg, hreg");
    myParser.AddComponent("d = a + b");
@@ -205,13 +207,14 @@ TEST (Component, ConvertToLine)
    EXPECT_EQ(myParser.WriteComponent(2), "MUL#(.DATAWIDTH(64)) MUL_0({a},{c},{f});");
    EXPECT_EQ(myParser.WriteComponent(3), "COMP#(.DATAWIDTH(64)) COMP_0(.a({d}),.b({e}),.gt(g),.lt(),.eq());");
    EXPECT_EQ(myParser.WriteComponent(4), "MUX2x1#(.DATAWIDTH(32)) MUX_0(.a({d}),.b({e}),.sel(g),.d({z}));");
-   EXPECT_EQ(myParser.WriteComponent(5), "SHR#(.DATAWIDTH(64)) SHR_0({greg},{63'b0,dEQe},{zrin});");
-   EXPECT_EQ(myParser.WriteComponent(6), "SHL#(.DATAWIDTH(32)) SHL_0({hreg},{31'b0,dLTe},{xrin});");
+   EXPECT_EQ(myParser.WriteComponent(5), "SHR#(.DATAWIDTH(64)) SHR_0({greg},{62'b0,dEQe},{zrin});");
+   EXPECT_EQ(myParser.WriteComponent(6), "SHL#(.DATAWIDTH(32)) SHL_0({hreg},{30'b0,dLTe},{xrin});");
    EXPECT_EQ(myParser.WriteComponent(7), "DIV#(.DATAWIDTH(64)) DIV_0({a},{b},{e});");
    EXPECT_EQ(myParser.WriteComponent(8), "MOD#(.DATAWIDTH(64)) MOD_0({a},{b},{g});");
    EXPECT_EQ(myParser.WriteComponent(9), "INC#(.DATAWIDTH(64)) INC_0({c},{f});");
    EXPECT_EQ(myParser.WriteComponent(10), "DEC#(.DATAWIDTH(64)) DEC_0({a},{e});");
    EXPECT_EQ(myParser.WriteWire(0), "wire [63:0] e,f,g,zwire,xwire;");
+   EXPECT_THROW(myParser.AddComponent("d = bob + cat"), string);
 
 }
 
@@ -247,4 +250,36 @@ TEST(IntfParser_FileReader, GetLineConvertToLine)
    EXPECT_EQ(myReader.Done(), true); 
    myParser.GenerateOutput("circuit1");   
 
+}
+
+TEST(Djikstra, Init)
+{
+   Djikstra myDjik;
+   EXPECT_EQ(LATENCY[MUL][_64BIT], (float)15.354);
+   FileReader myReader("474a_circuit1.txt");
+   IntfParser myParser;
+   while (myReader.Done() != true)
+   {
+      myParser.Convert(myReader.GetLine());
+   }
+   for (int i = 0; i < myParser.inputs.size(); i++)
+   {
+      Component* component = &myParser.inputs[i];
+      myDjik.AddComponent(component);
+   }
+   /*for (int i = 0; i < myParser.outputs.size(); i++)
+   {
+      Component* component = &myParser.outputs[i];
+      myDjik.AddComponent(component);
+   }*/
+   for (int i = 0; i < myParser.components.size(); i++)
+   {
+      Component* component = myParser.components[i];
+      
+      myDjik.AddComponent(component); 
+   }
+   Node * node = myDjik.FindNode("a");
+   node->distance = 0;
+   myDjik.VisitNode("a");
+   std::cout <<   myDjik.GreatestLatency() << std::endl;
 }

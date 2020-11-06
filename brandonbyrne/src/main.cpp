@@ -7,7 +7,8 @@ int main(int argc, char * argv[])
 {
    if (argc != 3)
    {
-   
+      std::cout << "Usage: ./dpgen inputNetlist output.v" << std::endl;   
+      return -1;
    }
    std::string input(argv[1]);
    std::string output(argv[2]);
@@ -29,7 +30,10 @@ int main(int argc, char * argv[])
    {
       std::cout << "Exception caught: " << exception << std::endl;
    }
+   catch (...)
+   {
+      std::cout << "Unhandled exception caught" << std::endl;
+   }
 
-   std::cout << "Hello world" << std::endl;
    return 0;
 }

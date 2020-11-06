@@ -1,1 +1,1 @@
-add_executable(dpgen main.cpp FileReader.cpp FileWriter.cpp IntfParser.cpp)
+add_executable(dpgen main.cpp FileReader.cpp FileWriter.cpp IntfParser.cpp Djikstra.cpp)
