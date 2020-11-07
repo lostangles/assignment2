@@ -82,14 +82,22 @@ for (int k = 0; k < (int)nodeId->neighborNames.size(); k++)
 float Djikstra::GreatestLatency()
 {
    float greatestLatency = std::numeric_limits<float>::infinity();
-   for (int i = 0; i < (int)nodes.size(); i++)
+   for (int j = 0; j < nodes.size(); j++)
    {
-      if ( (nodes[i].distance < greatestLatency) && (nodes[i].distance != std::numeric_limits<float>::infinity()) ) 
+      if (nodes[j].type == INPUT)
       {
-         greatestLatency = nodes[i].distance;
+      VisitNode(nodes[j].name);
+      for (int i = 0; i < (int)nodes.size(); i++)
+      {
+         if ( (nodes[i].distance < greatestLatency) && (nodes[i].distance != std::numeric_limits<float>::infinity()) ) 
+         {
+            greatestLatency = nodes[i].distance;
+         }
+      }
+      for (int i = 0; i < nodes.size(); i++) nodes[i].Reset();
       }
    }
-   return greatestLatency;
+   return -1.0 * greatestLatency;
 }
 
 void Djikstra::AddComponent(Component * component)
@@ -240,8 +248,9 @@ void Djikstra::AddComponent(Component * component)
    case DEC:
    case FF:
    {
-           std::vector<std::string> neighborsA;
+           std::vector<std::string> neighborsA, neighborsC;
            Node * node = FindNode(component->inputA);
+           Node * neighbor = FindNode(component->output);
            if( node == NULL)
            {
               neighborsA.push_back(component->output);
@@ -250,6 +259,10 @@ void Djikstra::AddComponent(Component * component)
            else
            {
               node->neighborNames.push_back(component->output);
+           }
+           if (neighbor == NULL)
+           {
+              AddNode(component->output, component->type, component->sizeToBitSize(), neighborsC);
            }
 
       break;
@@ -260,7 +273,11 @@ void Djikstra::AddComponent(Component * component)
            ComponentOUTPUT* compOut = reinterpret_cast<ComponentOUTPUT*>(component);
            for (int i = 0; i < compOut->ports.size(); i++)
            {
-              AddNode(compOut->ports[i], component->type, component->sizeToBitSize(), neighborsA);
+              Node * node = FindNode(compOut->ports[i]);
+	      if (node == NULL)
+              {
+	         AddNode(compOut->ports[i], component->type, component->sizeToBitSize(), neighborsA);
+              }
            }
       break;
    }

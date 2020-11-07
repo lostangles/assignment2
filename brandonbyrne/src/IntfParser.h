@@ -96,6 +96,7 @@ class IntfParser
         std::string WriteReg(int number); 
         string GenerateOutput(std::string moduleName);
         int GetSigned(std::string line);
+	bool isComponentSigned(std::string portName);
 
         std::vector<ComponentWIRE> wires;
         std::vector<ComponentINPUT> inputs;
@@ -115,7 +116,7 @@ class Component
 {
    public:
 	virtual std::string ComponentToLine() = 0;
-	Component(){};
+	Component(){ size = 0; inputSizeA = 0; inputSizeB = 0; isSigned = 0;};
 
         Component(int size) { this->size = size; }
         void ParsePorts(std::string line);

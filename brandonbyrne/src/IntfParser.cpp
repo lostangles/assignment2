@@ -85,7 +85,7 @@ string IntfParser::GenerateOutput(string moduleName)
    
    line += "\nendmodule";
 
-   cout << line << endl;
+   //cout << line << endl;
    return line;
 }
 
@@ -510,6 +510,9 @@ bool IntfParser::AddComponent(string line)
    bool componentAdded = false;
    Component_Type_e type = GetType(line);
    int size;
+   bool isSignedA = false;
+   bool isSignedB = false;
+   bool isSignedOut = false;
    if (line.compare("") == 0)
    {
       return false;
@@ -532,6 +535,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = ADD;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -546,6 +553,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = SUB;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -560,6 +571,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = MUL;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -574,6 +589,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = COMP;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -588,6 +607,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = MUX2x1;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -602,6 +625,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = SHR;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -616,6 +643,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = SHL;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -630,6 +661,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = DIV;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -644,6 +679,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = MOD;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -658,6 +697,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = INC;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -672,6 +715,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = DEC;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -686,6 +733,10 @@ bool IntfParser::AddComponent(string line)
       size = FindPortSize(myComponent->inputB);
       myComponent->inputSizeB = size;
       myComponent->type = FF;
+      isSignedA = isComponentSigned(myComponent->inputA);
+      isSignedB = isComponentSigned(myComponent->inputB);
+      isSignedOut = isComponentSigned(myComponent->output);
+      if (isSignedA || isSignedB || isSignedOut) myComponent->isSigned = true;
       components.push_back(myComponent);
       break;
    }
@@ -693,6 +744,56 @@ bool IntfParser::AddComponent(string line)
    }   
 
    return componentAdded;
+}
+
+bool IntfParser::isComponentSigned(string portName)
+{
+   bool isSigned = false;
+   for (int i = 0; i < (int)inputs.size(); i++)
+   {
+      for (int j = 0; j < (int)inputs[i].ports.size(); j++)
+      {
+         if (inputs[i].ports[j].compare(portName) == 0)
+         if (inputs[i].isSigned == 1)
+         {
+            isSigned = true;
+         }
+      }
+   }
+   for (int i = 0; i < (int)outputs.size(); i++)
+   {
+      for (int j = 0; j < (int)outputs[i].ports.size(); j++)
+      {
+         if (outputs[i].ports[j].compare(portName) == 0)
+         if (outputs[i].isSigned == 1)
+         {
+            isSigned = true;
+         }
+      }
+   }
+   for (int i = 0; i < (int)wires.size(); i++)
+   {
+      for (int j = 0; j < (int)wires[i].wires.size(); j++)
+      {
+         if (wires[i].wires[j].compare(portName) == 0)
+         if (wires[i].isSigned == 1)
+         {
+            isSigned = true;
+         }
+      }
+   } 
+   for (int i = 0; i < (int)registers.size(); i++)
+   {
+      for (int j = 0; j < (int)registers[i].registers.size(); j++)
+      {
+         if (registers[i].registers[j].compare(portName) == 0)
+         if (registers[i].isSigned == 1)
+         {
+            isSigned = true;
+         }
+      }
+   }
+   return isSigned;	
 }
 
 string IntfParser::WriteReg(int number)
@@ -768,13 +869,28 @@ string Component::pad_zeros(std::string port)
    {
       if (inputSizeA < size)
       {
-         zeros += to_string(size - inputSizeA);
          if (isSigned)
          {
-            zeros += "'b1,";
+            zeros += "{";
+	    if (inputSizeA == 1) 
+            zeros += to_string(size - inputSizeA+1);
+            else
+            zeros += to_string(size - inputSizeA);
+	    zeros += "{";
+	    zeros += port;
+	    zeros += "[";
+	    if (inputSizeA == 1) 
+            zeros += to_string(inputSizeA-1);
+            else
+            zeros += to_string(inputSizeA);
+            zeros += "]}},";
          }
          else
-         {
+	 {
+	    if (inputSizeA == 1) 
+            zeros += to_string(size - inputSizeA+1);
+            else
+            zeros += to_string(size - inputSizeA-1);
             zeros += "'b0,";
          }
       }
@@ -783,13 +899,29 @@ string Component::pad_zeros(std::string port)
    {
       if (inputSizeB < size)
       {
-         zeros += to_string(size - inputSizeB);
+
          if (isSigned)
          {
-            zeros += "'b1,";
+            zeros += "{";
+	    if (inputSizeB == 1) 
+            zeros += to_string(size - inputSizeB+1);
+            else
+            zeros += to_string(size - inputSizeB);
+	    zeros += "{";
+	    zeros += port;
+	    zeros += "[";
+	    if (inputSizeB == 1) 
+            zeros += to_string(inputSizeB-1);
+            else
+            zeros += to_string(inputSizeB);
+            zeros += "]}},";
          }
          else
          {
+	    if (inputSizeB == 1) 
+            zeros += to_string(size - inputSizeB+1);
+            else
+            zeros += to_string(size - inputSizeB -1);
             zeros += "'b0,";
          }
       }
@@ -1031,7 +1163,7 @@ void ComponentOUTPUT::ParsePorts(string line)
 BitSize_e Component::sizeToBitSize()
 {
    int inputSize = inputSizeA > inputSizeB ? inputSizeA : inputSizeB;
-//   inputSize = (inputSize > size) ? inputSize : size;
+   inputSize = (inputSize > size) ? inputSize : size;
    if (inputSize < size)
    {
       inputSize = size;

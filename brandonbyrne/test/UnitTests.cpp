@@ -207,8 +207,8 @@ TEST (Component, ConvertToLine)
    EXPECT_EQ(myParser.WriteComponent(2), "MUL#(.DATAWIDTH(64)) MUL_0({a},{c},{f});");
    EXPECT_EQ(myParser.WriteComponent(3), "COMP#(.DATAWIDTH(64)) COMP_0(.a({d}),.b({e}),.gt(g),.lt(),.eq());");
    EXPECT_EQ(myParser.WriteComponent(4), "MUX2x1#(.DATAWIDTH(32)) MUX_0(.a({d}),.b({e}),.sel(g),.d({z}));");
-   EXPECT_EQ(myParser.WriteComponent(5), "SHR#(.DATAWIDTH(64)) SHR_0({greg},{62'b0,dEQe},{zrin});");
-   EXPECT_EQ(myParser.WriteComponent(6), "SHL#(.DATAWIDTH(32)) SHL_0({hreg},{30'b0,dLTe},{xrin});");
+   EXPECT_EQ(myParser.WriteComponent(5), "SHR#(.DATAWIDTH(64)) SHR_0({greg},{{63{dEQe[0]}},dEQe},{zrin});");
+   EXPECT_EQ(myParser.WriteComponent(6), "SHL#(.DATAWIDTH(32)) SHL_0({hreg},{{31{dLTe[0]}},dLTe},{xrin});");
    EXPECT_EQ(myParser.WriteComponent(7), "DIV#(.DATAWIDTH(64)) DIV_0({a},{b},{e});");
    EXPECT_EQ(myParser.WriteComponent(8), "MOD#(.DATAWIDTH(64)) MOD_0({a},{b},{g});");
    EXPECT_EQ(myParser.WriteComponent(9), "INC#(.DATAWIDTH(64)) INC_0({c},{f});");
@@ -262,7 +262,7 @@ TEST(Djikstra, Init)
    {
       myParser.Convert(myReader.GetLine());
    }
-   for (int i = 0; i < myParser.inputs.size(); i++)
+   for (int i = 0; i < (int)myParser.inputs.size(); i++)
    {
       Component* component = &myParser.inputs[i];
       myDjik.AddComponent(component);
@@ -272,11 +272,16 @@ TEST(Djikstra, Init)
       Component* component = &myParser.outputs[i];
       myDjik.AddComponent(component);
    }*/
-   for (int i = 0; i < myParser.components.size(); i++)
+   for (int i = 0; i < (int)myParser.components.size(); i++)
    {
       Component* component = myParser.components[i];
       
       myDjik.AddComponent(component); 
+   }
+   for (int i = 0; i < (int)myParser.outputs.size(); i++)
+   {
+      Component* component = &myParser.outputs[i];
+      myDjik.AddComponent(component);
    }
    Node * node = myDjik.FindNode("a");
    node->distance = 0;

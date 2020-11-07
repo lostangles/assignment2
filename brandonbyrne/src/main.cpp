@@ -2,6 +2,7 @@
 #include "FileReader.h"
 #include "FileWriter.h"
 #include "IntfParser.h"
+#include "Djikstra.h"
 
 int main(int argc, char * argv[])
 {
@@ -15,6 +16,7 @@ int main(int argc, char * argv[])
    FileReader myReader(input);
    FileWriter myWriter(output);
    IntfParser myParser; 
+   Djikstra myDjik;
    
    try 
    {
@@ -25,6 +27,24 @@ int main(int argc, char * argv[])
       output.pop_back();
       output.pop_back();
       myWriter.WriteLine(myParser.GenerateOutput(output));
+      
+      for (int i = 0; i < myParser.inputs.size(); i++)
+      {
+         Component* component = &myParser.inputs[i];
+         myDjik.AddComponent(component);
+      } 
+      for (int i = 0; i < myParser.components.size(); i++)
+      {
+         Component* component = myParser.components[i];
+         myDjik.AddComponent(component);
+      }
+      for (int i = 0; i < myParser.outputs.size(); i++)
+      {
+         Component* component = &myParser.outputs[i];
+         myDjik.AddComponent(component);
+      }
+      std::cout << "Critical Path : " << myDjik.GreatestLatency() << std::endl;
+
    }
    catch (std::string exception) 
    {
