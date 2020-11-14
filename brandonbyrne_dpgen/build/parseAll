@@ -1,0 +1,4 @@
+for i in ../inputs/*
+do
+   ./src/dpgen $i "$i.v"
+done
