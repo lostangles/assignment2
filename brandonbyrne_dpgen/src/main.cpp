@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
          Component* component = &myParser.outputs[i];
          myDjik.AddComponent(component);
       }
-      std::cout << "Critical Path : " << myDjik.GreatestLatency() << std::endl;
+      std::cout << "Critical Path : " << myDjik.GreatestLatency() << " ns" << std::endl;
 
    }
    catch (std::string exception) 
