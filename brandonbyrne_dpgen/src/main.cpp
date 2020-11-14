@@ -28,17 +28,17 @@ int main(int argc, char * argv[])
       output.pop_back();
       myWriter.WriteLine(myParser.GenerateOutput(output));
       
-      for (int i = 0; i < myParser.inputs.size(); i++)
+      for (int i = 0; i < (int)myParser.inputs.size(); i++)
       {
          Component* component = &myParser.inputs[i];
          myDjik.AddComponent(component);
       } 
-      for (int i = 0; i < myParser.components.size(); i++)
+      for (int i = 0; i < (int)myParser.components.size(); i++)
       {
          Component* component = myParser.components[i];
          myDjik.AddComponent(component);
       }
-      for (int i = 0; i < myParser.outputs.size(); i++)
+      for (int i = 0; i < (int)myParser.outputs.size(); i++)
       {
          Component* component = &myParser.outputs[i];
          myDjik.AddComponent(component);

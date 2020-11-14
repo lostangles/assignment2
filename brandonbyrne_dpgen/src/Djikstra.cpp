@@ -82,7 +82,7 @@ for (int k = 0; k < (int)nodeId->neighborNames.size(); k++)
 float Djikstra::GreatestLatency()
 {
    float greatestLatency = std::numeric_limits<float>::infinity();
-   for (int j = 0; j < nodes.size(); j++)
+   for (int j = 0; j < (int)nodes.size(); j++)
    {
       if (nodes[j].type == INPUT)
       {
@@ -94,7 +94,7 @@ float Djikstra::GreatestLatency()
             greatestLatency = nodes[i].distance;
          }
       }
-      for (int i = 0; i < nodes.size(); i++) nodes[i].Reset();
+      for (int i = 0; i < (int)nodes.size(); i++) nodes[i].Reset();
       }
    }
    return -1.0 * greatestLatency;
@@ -271,7 +271,7 @@ void Djikstra::AddComponent(Component * component)
    { 
            std::vector<std::string> neighborsA, neighborsB;
            ComponentOUTPUT* compOut = reinterpret_cast<ComponentOUTPUT*>(component);
-           for (int i = 0; i < compOut->ports.size(); i++)
+           for (int i = 0; i < (int)compOut->ports.size(); i++)
            {
               Node * node = FindNode(compOut->ports[i]);
 	      if (node == NULL)
@@ -285,7 +285,7 @@ void Djikstra::AddComponent(Component * component)
    { 
            std::vector<std::string> neighborsA, neighborsB;
            ComponentINPUT* compOut = reinterpret_cast<ComponentINPUT*>(component);
-           for (int i = 0; i < compOut->ports.size(); i++)
+           for (int i = 0; i < (int)compOut->ports.size(); i++)
            {
               AddNode(compOut->ports[i], component->type, component->sizeToBitSize(), neighborsA);
            }
