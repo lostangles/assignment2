@@ -85,7 +85,7 @@ string IntfParser::GenerateOutput(string moduleName)
    
    line += "\nendmodule";
 
-   //cout << line << endl;
+//   cout << line << endl;
    return line;
 }
 
@@ -839,7 +839,7 @@ void Component::ParsePorts(string line)
       {
          break;
       }
-      if ( port.find("=") != std::string::npos ) 
+      if ( port.compare("=") == 0 ) 
       {
          output = lastToken;
          assignmentFound = true;
@@ -865,6 +865,7 @@ void Component::ParsePorts(string line)
 string Component::pad_zeros(std::string port)
 {
    string zeros = "";
+   
    if (port.compare(inputA) == 0)
    {
       if (inputSizeA < size)
@@ -1011,7 +1012,7 @@ void ComponentWIRE::ParsePorts(string line)
       {
          continue;
       }*/
-       
+      if (port.compare("") == 0) continue; 
       if ( port.find(",") != std::string::npos )
       {
          wires.push_back(port.substr(0, port.size() - 1) );
@@ -1132,32 +1133,6 @@ void ComponentOUTPUT::ParsePorts(string line)
          }
       }
    }
-/* 
-   string port;
-   bool portFound = false;
-   char delim = ' ';
-   stringstream myStream(line);
-   while(getline(myStream, port, delim ))
-   {
-      //Start collecting port names
-      if ( port.find("Int") != std::string::npos ) 
-      {
-         portFound = true;
-         continue;
-      }
-      else if (!portFound)
-      {
-         continue;
-      } 
-      if ( port.find(",") != std::string::npos )
-      {
-         ports.push_back(port.substr(0, port.size() - 1) );
-      }
-      else
-      {
-         ports.push_back(port);
-      }
-   }*/
 }
 
 BitSize_e Component::sizeToBitSize()
