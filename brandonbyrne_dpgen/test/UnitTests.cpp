@@ -267,6 +267,7 @@ TEST(Djikstra, Init)
       Component* component = &myParser.inputs[i];
       myDjik.AddComponent(component);
    }
+   
    /*for (int i = 0; i < myParser.outputs.size(); i++)
    {
       Component* component = &myParser.outputs[i];
@@ -287,4 +288,34 @@ TEST(Djikstra, Init)
    node->distance = 0;
    myDjik.VisitNode("a");
    std::cout <<   myDjik.GreatestLatency() << std::endl;
+
+
+   std::vector<Node> tempNodes = myDjik.nodes;
+
+   for (int i = 0; i < (int)tempNodes.size(); i++)
+   {
+      std::cout << "Node name: " << tempNodes[i].name << " Node type: " << tempNodes[i].type << std::endl;
+      if (tempNodes[i].type == INPUT)
+	      myDjik.PurgeNode(&myDjik.nodes, tempNodes[i].name);
+   }
+   myDjik.ResetVisited(&myDjik.nodes);
+   myDjik.ComputeAsapTime(&myDjik.nodes);
+   myDjik.ComputeAlapTime(&myDjik.nodes, 10);
+   myDjik.ComputeFrames(&myDjik.nodes);
+   myDjik.ComputeDistance(&myDjik.nodes, 10);
+
+   
+   for (int i = 0; i < (int)myDjik.nodes.size(); i++)
+   {
+      myDjik.nodes[i].Time = get<0>(myDjik.ComputeForce(&myDjik.nodes, &myDjik.nodes[i], 0, true, true));
+      myDjik.nodes[i].asapTime = myDjik.nodes[i].Time;
+      myDjik.nodes[i].alapTime = myDjik.nodes[i].Time;
+      myDjik.nodes[i].prob = 1.0;
+      myDjik.ComputeDistance(&myDjik.nodes, 10);
+   }
+
+   for (int i = 0; i < myDjik.nodes.size(); i++)
+   {
+      myDjik.PrintNode(myDjik.nodes[i]);
+   }
 }

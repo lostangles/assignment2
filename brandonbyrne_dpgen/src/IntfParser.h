@@ -17,10 +17,10 @@ enum Component_Type_e
    MOD,
    INC,
    DEC,
+   FF,
    WIRE,
    INPUT,
    OUTPUT,
-   FF,
    NUM_COMPONENTS,
    NO_TYPE_FOUND
 } ;
