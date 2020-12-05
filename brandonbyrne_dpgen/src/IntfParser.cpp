@@ -5,6 +5,8 @@ using namespace std;
 IntfParser::IntfParser()
 {
    emptyFile = true;
+   processingIfOp = false;
+   isElse = false;
 }
 
 std::string IntfParser::Convert(std::string line)
@@ -16,6 +18,7 @@ std::string IntfParser::Convert(std::string line)
         (firstToken.compare("input") == 0) ||
         (firstToken.compare("output") == 0) ||
         (firstToken.compare("register") == 0) ||
+	(firstToken.compare("variable") == 0) ||
         (firstToken.compare("wire") == 0) 
       )
    {
@@ -34,6 +37,15 @@ std::string IntfParser::Convert(std::string line)
    return "";
 }
 
+string IntfParser::CreateState(int bits)
+{
+   string output = "reg [";
+   output += to_string(bits);
+   output += ":0] State;\n\n";
+   output += "\t always @(posedge Clk) begin\n\t\tif (Rst) begin\n\t\t\tState <= 0;\n";
+   return output;
+}
+
 string IntfParser::GenerateOutput(string moduleName)
 {
    if (emptyFile)
@@ -45,7 +57,7 @@ string IntfParser::GenerateOutput(string moduleName)
    line += moduleName;
    line += "(\n";
    
-   line += "\tinput clk,\n\tinput rst,\n";
+   line += "\tinput Clk,\n\tinput Rst,\n\tinput Start,\n\toutput reg Done,\n";
  
    for (int i = 0; i < (int)inputs.size(); i++)
    {
@@ -74,16 +86,16 @@ string IntfParser::GenerateOutput(string moduleName)
       line += "\n";
    }
 
-   
+  /* 
 
    for (int i = 0; i < (int)components.size(); i++)
    {
       line += components.at(i)->ComponentToLine();
       line += "\n";
    }
+   */
    
-   
-   line += "\nendmodule";
+   //line += "\nendmodule";
 
 //   cout << line << endl;
    return line;
@@ -237,7 +249,7 @@ Component_Type_e IntfParser::GetType(std::string line)
 {
    Component_Type_e type = NO_TYPE_FOUND;
   
-   if (line.find("wire") != std::string::npos)
+   if ( (line.find("wire") != std::string::npos) || (line.find("variable") != std::string::npos) )
    {
       if (line.find("Int") != std::string::npos)
       {
@@ -505,6 +517,42 @@ int IntfParser::FindPortSize(string port)
    return portSize;
 }
 
+string IntfParser::GetIfCondition(string line)
+{
+   string condition = "";
+   char delim = ' ';
+   bool nextTokenContainsCondition = false;
+    //Handle if/else
+   stringstream ifOpStream(line);
+   while(getline(ifOpStream, condition, delim))
+   {
+      if (nextTokenContainsCondition)
+      {
+         return condition;
+      }
+      if (condition.compare("(") == 0)
+      {
+         nextTokenContainsCondition = true;
+      }
+   }
+   return condition;
+}
+
+string IntfParser::GetIfConditions()
+{
+   string conditions = "";
+   vector<string> copyIfConditions = ifConditions;
+   for (int i = 0; i < (int)copyIfConditions.size(); i++)
+   {
+      conditions += copyIfConditions[i];
+      if ((int)i != (int)(copyIfConditions.size() - 1) )
+      {
+         conditions += " & ";
+      }		     		     
+   }
+   return conditions;
+}
+
 bool IntfParser::AddComponent(string line)
 {
    bool componentAdded = false;
@@ -513,13 +561,63 @@ bool IntfParser::AddComponent(string line)
    bool isSignedA = false;
    bool isSignedB = false;
    bool isSignedOut = false;
+   //bool lineContainsIf = false;
    if (line.compare("") == 0)
    {
       return false;
    }
    else if (type == Component_Type_e::NO_TYPE_FOUND)
    {
-      throw string("Invalid type/operator found");
+//      throw string("Invalid type/operator found");
+   }
+
+   if (!processingIfOp)
+   {
+      processingIfOp = isIfOp(line);
+   }
+
+   if (processingIfOp)
+   {
+      if (isIfOp(line))
+      {
+	 ifCount++;
+         ifConditions.push_back(GetIfCondition(line));
+	 return false;
+      }
+      //Does next pass contain else?
+      if (isElse)
+      {
+	 //Reset flag
+         isElse = false;
+	 //If next pass contains else, negate the last ifCondition
+	 if (line.find("else") != std::string::npos)
+	 {
+            string temp = "!";
+	    temp += ifConditions.back();
+	    ifConditions.pop_back();
+	    ifConditions.push_back(temp);
+	    ifCount--;
+	    return false;
+	 }
+	 else //next pass did not contain else, remove last condition from ifConditions
+	 {
+            ifConditions.pop_back();
+	    ifCount--;
+	 }
+      }
+      //Found end of if statement, set flag to check if next pass contains else
+      if (line.find("}") != std::string::npos)
+      {
+         isElse = true;
+	 return false;
+      }
+
+   }
+   
+   //Check to see if we have any if conditions left, if not reset flags
+   if (ifConditions.size() == 0)
+   {
+      processingIfOp = false;
    }
 
    switch(type)
@@ -527,6 +625,12 @@ bool IntfParser::AddComponent(string line)
    case ADD:
    {
       ComponentADD * myComponent = new ComponentADD();
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -545,6 +649,12 @@ bool IntfParser::AddComponent(string line)
    case SUB:
    {
       ComponentSUB * myComponent = new ComponentSUB;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -563,6 +673,12 @@ bool IntfParser::AddComponent(string line)
    case MUL:
    {
       ComponentMUL * myComponent = new ComponentMUL;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -581,6 +697,12 @@ bool IntfParser::AddComponent(string line)
    case COMP:
    {
       ComponentCOMP * myComponent = new ComponentCOMP;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -599,6 +721,12 @@ bool IntfParser::AddComponent(string line)
    case MUX2x1:
    {
       ComponentMUX2x1 * myComponent = new ComponentMUX2x1;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -617,6 +745,12 @@ bool IntfParser::AddComponent(string line)
    case SHR:
    {
       ComponentSHR * myComponent = new ComponentSHR;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -635,6 +769,12 @@ bool IntfParser::AddComponent(string line)
    case SHL:
    {
       ComponentSHL * myComponent = new ComponentSHL;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -653,6 +793,12 @@ bool IntfParser::AddComponent(string line)
    case DIV:
    {
       ComponentDIV * myComponent = new ComponentDIV;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -671,6 +817,12 @@ bool IntfParser::AddComponent(string line)
    case MOD:
    {
       ComponentMOD * myComponent = new ComponentMOD;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -689,6 +841,12 @@ bool IntfParser::AddComponent(string line)
    case INC:
    {
       ComponentINC * myComponent = new ComponentINC;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -707,6 +865,12 @@ bool IntfParser::AddComponent(string line)
    case DEC:
    {
       ComponentDEC * myComponent = new ComponentDEC;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -725,6 +889,12 @@ bool IntfParser::AddComponent(string line)
    case FF:
    {
       ComponentFF * myComponent = new ComponentFF;
+      if (processingIfOp)
+      {
+         myComponent->ifOp = true;
+	 myComponent->ifCondition = GetIfConditions();
+	 myComponent->ifCount = ifCount;
+      }
       myComponent->ParsePorts(line);
       size = FindPortSize(myComponent->output);
       myComponent->size = size;
@@ -823,14 +993,34 @@ string IntfParser::WriteComponent(int number)
    return components.at(number)->ComponentToLine();
 }
 
+bool IntfParser::isIfOp ( string line )
+{
+   bool ifOp = false;
+   char delim = ' ';
+   string port = "";
+    //Handle if/else
+   stringstream ifOpStream(line);
+   while(getline(ifOpStream, port, delim))
+   {
+      if (port.find("if") != std::string::npos)
+      {
+         ifOp = true;
+      }
+   }
+   return ifOp;
+}
+
 void Component::ParsePorts(string line)
 {
 
    string port;
+   ComponentLine = line;
    bool assignmentFound = false;
    char delim = ' ';
    bool oneShot = false;
    string lastToken;
+
+
    stringstream myStream(line);
    while(getline(myStream, port, delim ))
    {
@@ -935,6 +1125,7 @@ void ComponentCOMP::ParsePorts(string line)
    equal = "";
    greaterThan = "";
    lessThan = "";
+   ComponentLine = line;
    reinterpret_cast<Component*>(this)->ParsePorts(line);   
    
    if ( line.find("==") != std::string::npos ) 
@@ -961,6 +1152,7 @@ void ComponentMUX2x1::ParsePorts(string line)
    bool assignmentFound = false;
    char delim = ' ';
    int twoShot = 0;
+   ComponentLine = line;
    string lastToken;
    stringstream myStream(line);
    while(getline(myStream, port, delim ))
@@ -995,6 +1187,7 @@ void ComponentWIRE::ParsePorts(string line)
    string port;
    char delim = ' ';
    bool oneShot = false;
+   ComponentLine = line;
    stringstream myStream(line);
    while(getline(myStream, port, delim ))
    {
@@ -1030,6 +1223,7 @@ void ComponentREG::ParsePorts(string line)
 
    string port;
    bool portFound = false;
+   ComponentLine = line;
    char delim = ' ';
    stringstream myStream(line);
    while(getline(myStream, port, delim ))
@@ -1063,6 +1257,7 @@ void ComponentINPUT::ParsePorts(string line)
    string port;
    bool portFound = false;
    char delim = ' ';
+   ComponentLine = line;
    stringstream myStream(line);
    
    while(getline(myStream, token, delim ))
@@ -1102,6 +1297,7 @@ void ComponentOUTPUT::ParsePorts(string line)
    string port;
    bool portFound = false;
    char delim = ' ';
+   ComponentLine = line;
    stringstream myStream(line);
    
    while(getline(myStream, token, delim ))

@@ -1,5 +1,5 @@
 #include "FileReader.h"
-
+#include <algorithm>
 FileReader::FileReader(std::string fileName)
 {
    myStream = new std::ifstream(fileName);
@@ -19,6 +19,7 @@ std::string FileReader::GetLine()
    {
       done = true;
    }
+   line.erase(std::remove(line.begin(), line.end(), '\t'), line.end());
    return line;
 }
 

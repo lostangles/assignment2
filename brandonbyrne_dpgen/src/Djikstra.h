@@ -18,8 +18,9 @@ class Djikstra
 {
    public:
 	Djikstra(){};
-        void AddNode (std::string name, Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors);
-        void AddNode (std::string name, Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors, std::vector<std::string> parents);
+	~Djikstra() {};
+        void AddNode (std::string name, Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors, std::string line, bool ifOp, std::string ifConditions, std::string realname, int ifCount);
+        void AddNode (std::string name, Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors, std::vector<std::string> parents, std::string line, bool ifOp, std::string ifConditions, std::string realname, int ifCount);
         Node* FindNode(std::string name);
         void VisitNode(std::string name);
         float GreatestLatency();
@@ -34,7 +35,7 @@ class Djikstra
 	vector<vector<double>> prob;
 	void ResetVisited(std::vector<Node>*nodes);
 	void PurgeNode(std::vector<Node>*nodes, std::string name);
- 
+        void Clean(); 
 };
 
 class Node
@@ -64,6 +65,11 @@ class Node
 	int alapTime = -1;
 	double prob;
 	int width;
+	std::string line;
+	bool ifOp = false;
+	std::string ifCondition = "";
+	std::string netName = "";
+	int ifCount = 0;
 };
 
 #endif

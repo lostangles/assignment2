@@ -20,14 +20,65 @@ void Djikstra::PrintNode(Node node)
    std::cout << endl;
    std::cout << "Node width: " << node.width << std::endl;
    std::cout << "Node prob: " << node.prob << std::endl;
+   std::cout << "Net name: " << node.netName << std::endl;
+   std::cout << "Line: " << node.line << std::endl;
+   std::cout << "ifOp: " << node.ifOp << std::endl;
+   std::cout << "ifConditions: " << node.ifCondition << std::endl;
    std::cout << "Scheduled time: " << node.Time << std::endl;
    std::cout << "ASAP time: " << node.asapTime << std::endl;
    std::cout << "ALAP time: " << node.alapTime << std::endl << std::endl;
 }
 
+void Djikstra::Clean()
+{
+   std::vector<Node> temp = this->nodes;
+   for (int i = 0; i < (int)temp.size(); i++)
+   {
+      if (temp[i].type == INPUT)
+      {
+        PurgeNode(&nodes, temp[i].name);
+      }
+   }
+
+   for (int i = 0; i < (int)nodes.size(); i++)
+   {
+      if (nodes[i].ifOp == true)
+      {
+         stringstream conditions(nodes[i].ifCondition);
+	 string token;
+	 char delim = ' ';
+	 while (getline(conditions, token, delim))
+	 {
+            if (token.find("&") == std::string::npos)
+	    {
+               token.erase(std::remove(token.begin(), token.end(), '!'), token.end()); 
+	       bool found = false;
+	       for (int j = 0; j < (int)nodes[i].parentNames.size(); j++)
+	       {
+                  if (token.compare(nodes[i].parentNames[j]) == 0)
+		  {
+                     found = true;
+		  }
+	       }
+	       if (!found)
+	       {
+                  nodes[i].parentNames.push_back(token);
+		  Node * parentNode = FindNode(token);
+		  if (parentNode != NULL)
+		  {
+		     parentNode->neighborNames.push_back(nodes[i].name);
+		  }
+	       }
+	    }
+	 }
+      }
+   }
+
+   ResetVisited(&nodes);
+}
+
 void Djikstra::PurgeNode(std::vector<Node>* nodes, std::string name)
 {
-   std::cout << "Purge Node name: " << name << std::endl;	
    for (int i = 0; i < (int) (*nodes).size(); i++)
    {
       Node * curNode = &(*nodes)[i];
@@ -49,10 +100,20 @@ void Djikstra::PurgeNode(std::vector<Node>* nodes, std::string name)
    }
 }
 
-void Djikstra::AddNode(std::string name,  Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors, std::vector<std::string> parents)
+void Djikstra::AddNode(std::string name,  Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors, std::vector<std::string> parents, std::string line, bool ifOp, std::string ifConditions, string realname, int ifCount)
 {
    Node newNode(name, type, size);
    newNode.distance = std::numeric_limits<float>::infinity();
+   newNode.line = line;
+   newNode.netName = realname;
+
+   if ( ifOp )
+   {
+      newNode.ifOp = true;
+      newNode.ifCondition += ifConditions;
+      newNode.ifCount = ifCount;
+      
+   }
    for (int i = 0; i < (int)neighbors.size(); i++)
    {
       newNode.AddNeighbor(neighbors[i]);
@@ -64,10 +125,18 @@ void Djikstra::AddNode(std::string name,  Component_Type_e type, BitSize_e size,
    nodes.push_back(newNode); 
 }
 
-void Djikstra::AddNode(std::string name,  Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors)
+void Djikstra::AddNode(std::string name,  Component_Type_e type, BitSize_e size, std::vector<std::string> neighbors, std::string line, bool ifOp, std::string ifConditions, string realname, int ifCount)
 {
    Node newNode(name, type, size);
    newNode.distance = std::numeric_limits<float>::infinity();
+   newNode.line = line;
+   newNode.netName = realname;
+   if ( ifOp )
+   {
+      newNode.ifOp = true;
+      newNode.ifCondition += ifConditions;
+      newNode.ifCount = ifCount;
+   }
    for (int i = 0; i < (int)neighbors.size(); i++)
    {
       newNode.AddNeighbor(neighbors[i]);
@@ -180,31 +249,36 @@ void Djikstra::AddComponent(Component * component)
            std::vector<std::string> neighborsA, neighborsB, neighborsC, parents;
            Node * node = FindNode(component->inputA);
            Node * neighbor = FindNode(component->output);
+	   string uniqueName = component->output;
+	   if (neighbor != NULL)
+	   {
+              uniqueName += "1";
+	   }
            if( node == NULL)
            {
-              neighborsA.push_back(component->output);
-              AddNode(component->inputA, component->type, component->sizeToBitSize(), neighborsA);
+              neighborsA.push_back(uniqueName);
+              AddNode(component->inputA, component->type, component->sizeToBitSize(), neighborsA, component->ComponentLine, component->ifOp, component->ifCondition, component->inputA, component->ifCount);
            }
            else
            {
-              node->neighborNames.push_back(component->output);
+              node->neighborNames.push_back(uniqueName);
            }
            node = FindNode(component->inputB);
            if( node == NULL)
            {
-              neighborsB.push_back(component->output);
-              AddNode(component->inputB, component->type, component->sizeToBitSize(), neighborsB);
+              neighborsB.push_back(uniqueName);
+              AddNode(component->inputB, component->type, component->sizeToBitSize(), neighborsB, component->ComponentLine, component->ifOp, component->ifCondition, component->inputB, component->ifCount);
            }
            else
            {
-              node->neighborNames.push_back(component->output);
+              node->neighborNames.push_back(uniqueName);
            }
-           if (neighbor == NULL)
-           {
+        //   if (neighbor == NULL)
+        //   {
 	      parents.push_back(component->inputA);
 	      parents.push_back(component->inputB);
-              AddNode(component->output, component->type, component->sizeToBitSize(), neighborsC, parents);
-           }
+              AddNode(uniqueName, component->type, component->sizeToBitSize(), neighborsC, parents, component->ComponentLine, component->ifOp, component->ifCondition, component->output, component->ifCount);
+        //   }
 
            break;
    }
@@ -213,6 +287,11 @@ void Djikstra::AddComponent(Component * component)
            std::vector<std::string> neighborsA, neighborsB, neighborsC, parents;
            Node * node = FindNode(component->inputA);
            Node * neighbor = FindNode(component->output);
+	   string uniqueName = component->output;
+	   if (neighbor != NULL)
+	   {
+              uniqueName += "1";
+	   }
            ComponentCOMP * compComp = reinterpret_cast<ComponentCOMP*>(component);
            if( node == NULL)
            {
@@ -223,7 +302,7 @@ void Djikstra::AddComponent(Component * component)
               if (compComp->greaterThan.compare("") != 0)
               neighborsA.push_back(compComp->greaterThan);
              
-              AddNode(compComp->inputA, compComp->type, compComp->sizeToBitSize(), neighborsA);
+              AddNode(compComp->inputA, compComp->type, compComp->sizeToBitSize(), neighborsA, component->ComponentLine, component->ifOp, component->ifCondition, compComp->inputA, component->ifCount);
            }
            else
            {
@@ -244,7 +323,7 @@ void Djikstra::AddComponent(Component * component)
               if (compComp->greaterThan.compare("") != 0)
               neighborsB.push_back(compComp->greaterThan);
              
-              AddNode(component->inputB, component->type, component->sizeToBitSize(), neighborsB);
+              AddNode(component->inputB, component->type, component->sizeToBitSize(), neighborsB, component->ComponentLine, component->ifOp, component->ifCondition, component->inputB, component->ifCount);
            }
            else
            {
@@ -255,17 +334,17 @@ void Djikstra::AddComponent(Component * component)
               if (compComp->greaterThan.compare("") != 0)
               node->neighborNames.push_back(compComp->greaterThan);
            }
-           if (neighbor == NULL)
-           {
+       //    if (neighbor == NULL)
+       //    {
 	      parents.push_back(compComp->inputA);
 	      parents.push_back(compComp->inputB);
               if (compComp->equal.compare("") != 0)
-              AddNode(compComp->equal, component->type, component->sizeToBitSize(), neighborsC, parents);
+              AddNode(compComp->equal, component->type, component->sizeToBitSize(), neighborsC, parents, component->ComponentLine, component->ifOp, component->ifCondition, compComp->equal, component->ifCount);
               if (compComp->lessThan.compare("") != 0)
-              AddNode(compComp->lessThan, component->type, component->sizeToBitSize(), neighborsC, parents);
+              AddNode(compComp->lessThan, component->type, component->sizeToBitSize(), neighborsC, parents, component->ComponentLine, component->ifOp, component->ifCondition, compComp->lessThan, component->ifCount);
               if (compComp->greaterThan.compare("") != 0)
-              AddNode(compComp->greaterThan, component->type, component->sizeToBitSize(), neighborsC, parents);
-           }
+              AddNode(compComp->greaterThan, component->type, component->sizeToBitSize(), neighborsC, parents, component->ComponentLine, component->ifOp, component->ifCondition, compComp->greaterThan, component->ifCount);
+       //    }
       
            break;
    }
@@ -273,12 +352,12 @@ void Djikstra::AddComponent(Component * component)
    {
            std::vector<std::string> neighborsA, neighborsB, neighborsC, parents;
            Node * node = FindNode(component->inputA);
-           Node * neighbor = FindNode(component->output);
+           //Node * neighbor = FindNode(component->output);
            ComponentMUX2x1 * compMux = reinterpret_cast<ComponentMUX2x1*>(component);
            if( node == NULL)
            {
               neighborsA.push_back(compMux->output);
-              AddNode(component->inputA, component->type, component->sizeToBitSize(), neighborsA);
+              AddNode(component->inputA, component->type, component->sizeToBitSize(), neighborsA, component->ComponentLine, component->ifOp, component->ifCondition, component->inputA, component->ifCount);
            }
            else
            {
@@ -288,7 +367,7 @@ void Djikstra::AddComponent(Component * component)
            if( node == NULL)
            {
               neighborsB.push_back(component->output);
-              AddNode(component->inputB, component->type, component->sizeToBitSize(), neighborsB);
+              AddNode(component->inputB, component->type, component->sizeToBitSize(), neighborsB, component->ComponentLine, component->ifOp, component->ifCondition, component->inputB, component->ifCount);
            }
            else
            {
@@ -298,19 +377,19 @@ void Djikstra::AddComponent(Component * component)
            if( node == NULL)
            {
               neighborsC.push_back(component->output);
-              AddNode(compMux->switchInput, component->type, component->sizeToBitSize(), neighborsC);
+              AddNode(compMux->switchInput, component->type, component->sizeToBitSize(), neighborsC, component->ComponentLine, component->ifOp, component->ifCondition, compMux->switchInput, component->ifCount);
            }
            else
            {
               node->neighborNames.push_back(compMux->output);
            }
-           if (neighbor == NULL)
-           {
+      //     if (neighbor == NULL)
+      //     {
 	      parents.push_back(component->inputA);
 	      parents.push_back(component->inputB);
 	      parents.push_back(compMux->switchInput);
-              AddNode(component->output, component->type, component->sizeToBitSize(), neighborsC, parents);
-           }
+              AddNode(component->output, component->type, component->sizeToBitSize(), neighborsC, parents, component->ComponentLine, component->ifOp, component->ifCondition, component->output, component->ifCount);
+      //     }
 
       
       break;
@@ -321,22 +400,22 @@ void Djikstra::AddComponent(Component * component)
    {
            std::vector<std::string> neighborsA, neighborsC, parents;
            Node * node = FindNode(component->inputA);
-           Node * neighbor = FindNode(component->output);
+           //Node * neighbor = FindNode(component->output);
            if( node == NULL)
            {
               neighborsA.push_back(component->output);
-              AddNode(component->inputA, component->type, component->sizeToBitSize(), neighborsA);
+              AddNode(component->inputA, component->type, component->sizeToBitSize(), neighborsA, component->ComponentLine, component->ifOp, component->ifCondition, component->inputA, component->ifCount);
            }
            else
            {
               node->neighborNames.push_back(component->output);
            }
-           if (neighbor == NULL)
-           {
+      //     if (neighbor == NULL)
+      //     {
 	      parents.push_back(component->inputA);
 	      parents.push_back(component->inputB);
-              AddNode(component->output, component->type, component->sizeToBitSize(), neighborsC, parents);
-           }
+              AddNode(component->output, component->type, component->sizeToBitSize(), neighborsC, parents, component->ComponentLine, component->ifOp, component->ifCondition, component->output, component->ifCount);
+      //     }
 
       break;
    }
@@ -349,7 +428,7 @@ void Djikstra::AddComponent(Component * component)
               Node * node = FindNode(compOut->ports[i]);
 	      if (node == NULL)
               {
-	         AddNode(compOut->ports[i], component->type, component->sizeToBitSize(), neighborsA);
+	         AddNode(compOut->ports[i], component->type, component->sizeToBitSize(), neighborsA, component->ComponentLine, component->ifOp, component->ifCondition, compOut->ports[i], component->ifCount);
               }
            }
       break;
@@ -360,7 +439,7 @@ void Djikstra::AddComponent(Component * component)
            ComponentINPUT* compOut = reinterpret_cast<ComponentINPUT*>(component);
            for (int i = 0; i < (int)compOut->ports.size(); i++)
            {
-              AddNode(compOut->ports[i], component->type, component->sizeToBitSize(), neighborsA);
+              AddNode(compOut->ports[i], component->type, component->sizeToBitSize(), neighborsA, component->ComponentLine, component->ifOp, component->ifCondition, compOut->ports[i], component->ifCount);
            }
       break;
    }
@@ -399,24 +478,33 @@ void Djikstra::ComputeAsapTime(std::vector<Node>* nodes)
 	    for (int j = 0; j < (int)curNode->parentNames.size(); j++) //go through each operations parents
 	    {
                Node * parNode = FindNode(curNode->parentNames[j]);
-	       if (parNode->type == MUL)
+	       if (parNode == NULL)
 	       {
-                  tempTime = parNode->asapTime + 1;
+                  //string msg = "Parent node ";
+		  //msg += curNode->parentNames[j];
+		  //msg += " not found!";
+		  //throw string(msg);
+		  //Handle inputs
+		  tempTime = 0;
 	       }
-	       else if ( (parNode->type == DIV) || (parNode->type == MOD) )
+	       else if (parNode->type == MUL)
 	       {
                   tempTime = parNode->asapTime + 2;
 	       }
+	       else if ( (parNode->type == DIV) || (parNode->type == MOD) )
+	       {
+                  tempTime = parNode->asapTime + 3;
+	       }
 	       else
 	       {
-                  tempTime = parNode->asapTime;
+                  tempTime = parNode->asapTime + 1;
 	       }
 	       if (tempTime > maxTime)
 	       {
                   maxTime = tempTime;
 	       }
 	    }
-	    curNode->asapTime = maxTime + 1;
+	    curNode->asapTime = maxTime ;
 	 }
 
       }
@@ -442,15 +530,16 @@ void Djikstra::ComputeAlapTime(std::vector<Node>* nodes, int latency)
             done = false;
 	 }
 	 //Nodes with no children are the last operations, their alap time is latency minus whatever their time to complete is
+	 //Done counts as a cycle so we only need to go back one less cycle
 	 if (curNode->neighborNames.size() == 0)
 	 {
             if (curNode->type == MUL)
 	    {
-               curNode->alapTime = latency - 2;
+               curNode->alapTime = latency - 1;
 	    }
 	    else if ( (curNode->type == DIV) || (curNode->type == MOD) )
 	    {
-               curNode->alapTime = latency - 3;
+               curNode->alapTime = latency - 2;
 	    }
 	    else if ( (curNode->type == OUTPUT) )
 	    {
@@ -460,6 +549,7 @@ void Djikstra::ComputeAlapTime(std::vector<Node>* nodes, int latency)
 	    {
                curNode->alapTime = latency;
 	    }
+	    
 
 	 }
 	 else //has neighbors, calculate alap time as neighbor - cyles for that operation
@@ -473,15 +563,15 @@ void Djikstra::ComputeAlapTime(std::vector<Node>* nodes, int latency)
 	       if (neighborNode->alapTime == -1 ) continue;
 	       if (curNode->type == MUL)
 	       {
-                  tempTime = neighborNode->alapTime - 1;
+                  tempTime = neighborNode->alapTime - 2;
 	       }
 	       else if ( (curNode->type == DIV) || (curNode->type == MOD) )
 	       {
-                  tempTime = neighborNode->alapTime - 2;
+                  tempTime = neighborNode->alapTime - 3;
 	       }
 	       else
 	       {
-                  tempTime = neighborNode->alapTime;
+                  tempTime = neighborNode->alapTime - 1;
 	       }
 	       if (tempTime < maxTime)
 	       {
@@ -490,7 +580,7 @@ void Djikstra::ComputeAlapTime(std::vector<Node>* nodes, int latency)
 	    }
 	    if (maxTime != 10000)
 	    {
-	       curNode->alapTime = maxTime - 1;
+	       curNode->alapTime = maxTime;
 	    }
 	 }
 
@@ -615,7 +705,7 @@ tuple<int, double> Djikstra::ComputeForce(std::vector<Node>* nodes, Node* node, 
       for (int i = 0; i < (int)node->parentNames.size(); i++)
       {
          Node * parNode = FindNode(node->parentNames[i]);
-	 if (!parNode->visited)
+	 if (parNode && !parNode->visited)
 	 {
             get<1>(force) += get<1>(ComputeForce(nodes, parNode, time, false, false));
 	 }

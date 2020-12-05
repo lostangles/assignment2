@@ -88,6 +88,7 @@ class IntfParser
         int GetPortSize(std::string line);
         std::vector<std::string> GetPortNames(std::string line);
         std::string Convert(std::string line);
+	std::string CreateState(int bits);
         bool AddComponent(std::string line);
         bool AddPorts(std::string line);
         int FindPortSize(std::string port);
@@ -97,6 +98,13 @@ class IntfParser
         string GenerateOutput(std::string moduleName);
         int GetSigned(std::string line);
 	bool isComponentSigned(std::string portName);
+	bool isIfOp(std::string line);
+	bool processingIfOp;
+	bool isElse;
+	std::vector<std::string> ifConditions;
+	int ifCount = 0;
+	std::string GetIfCondition(std::string line);
+	std::string GetIfConditions();
 
         std::vector<ComponentWIRE> wires;
         std::vector<ComponentINPUT> inputs;
@@ -116,7 +124,7 @@ class Component
 {
    public:
 	virtual std::string ComponentToLine() = 0;
-	Component(){ size = 0; inputSizeA = 0; inputSizeB = 0; isSigned = 0;};
+	Component(){ size = 0; inputSizeA = 0; inputSizeB = 0; isSigned = 0; ifOp = false; ifCondition = "";};
 
         Component(int size) { this->size = size; }
         void ParsePorts(std::string line);
@@ -130,6 +138,11 @@ class Component
         std::string inputA;
         std::string inputB;
         Component_Type_e type;
+	std::string ComponentLine;
+	bool ifOp;
+	std::string ifCondition;
+	int ifCount = 0;
+	
         
 
 };
@@ -164,7 +177,7 @@ class ComponentOUTPUT : public Component
            string outputLine;
            for (int i = 0; i < (int)ports.size(); i++)
            {
-              outputLine += "\toutput [";
+              outputLine += "\toutput reg [";
               outputLine += to_string(size);
               outputLine += ":0] ";
               outputLine += ports.at(i);
@@ -184,7 +197,7 @@ class ComponentWIRE : public Component
 	std::string ComponentToLine()
 	{
            string outputLine;
-           outputLine += "wire [";
+           outputLine += "reg [";
            outputLine += to_string(size);
            outputLine += ":0] ";
            for (int i = 0; i < (int)wires.size(); i++)

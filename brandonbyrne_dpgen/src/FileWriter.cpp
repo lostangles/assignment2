@@ -6,10 +6,20 @@ FileWriter::FileWriter(std::string fileName)
    myStream->open(fileName);
 }
 
-FileWriter::~FileWriter()
+void FileWriter::CloseWriter()
 {
+   closed = true;
    myStream->close();
    delete myStream;
+}
+
+FileWriter::~FileWriter()
+{ 
+   if (!closed)
+   {
+      myStream->close();
+      delete myStream;
+   }
 }
 
 bool FileWriter::WriteLine(std::string line)

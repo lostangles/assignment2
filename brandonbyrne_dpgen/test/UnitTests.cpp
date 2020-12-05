@@ -289,7 +289,7 @@ TEST(Djikstra, Init)
    myDjik.VisitNode("a");
    std::cout <<   myDjik.GreatestLatency() << std::endl;
 
-
+/*
    std::vector<Node> tempNodes = myDjik.nodes;
 
    for (int i = 0; i < (int)tempNodes.size(); i++)
@@ -298,11 +298,13 @@ TEST(Djikstra, Init)
       if (tempNodes[i].type == INPUT)
 	      myDjik.PurgeNode(&myDjik.nodes, tempNodes[i].name);
    }
-   myDjik.ResetVisited(&myDjik.nodes);
+ */
+   myDjik.Clean();
+//   myDjik.ResetVisited(&myDjik.nodes);
    myDjik.ComputeAsapTime(&myDjik.nodes);
-   myDjik.ComputeAlapTime(&myDjik.nodes, 10);
+   myDjik.ComputeAlapTime(&myDjik.nodes, 20);
    myDjik.ComputeFrames(&myDjik.nodes);
-   myDjik.ComputeDistance(&myDjik.nodes, 10);
+   myDjik.ComputeDistance(&myDjik.nodes, 20);
 
    
    for (int i = 0; i < (int)myDjik.nodes.size(); i++)
@@ -311,10 +313,10 @@ TEST(Djikstra, Init)
       myDjik.nodes[i].asapTime = myDjik.nodes[i].Time;
       myDjik.nodes[i].alapTime = myDjik.nodes[i].Time;
       myDjik.nodes[i].prob = 1.0;
-      myDjik.ComputeDistance(&myDjik.nodes, 10);
+      myDjik.ComputeDistance(&myDjik.nodes, 20);
    }
 
-   for (int i = 0; i < myDjik.nodes.size(); i++)
+   for (int i = 0; i < (int)myDjik.nodes.size(); i++)
    {
       myDjik.PrintNode(myDjik.nodes[i]);
    }
